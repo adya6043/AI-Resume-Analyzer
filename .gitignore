@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Environment variables
+.env
+
+# Uploads
+uploads/
+
+# VS Code
+.vscode/
+
+# React build
+client/build/
