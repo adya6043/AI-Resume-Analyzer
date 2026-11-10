@@ -41,7 +41,7 @@ const fetchHistory = async () => {
   try {
 
     const res = await axios.get(
-      "http://localhost:5000/api/history",
+      "http://https://ai-resume-analyzer-1-lu4n.onrender.com/api/history",
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -63,7 +63,7 @@ const fetchHistory = async () => {
 const fetchEvaluationHistory = async () => {
   try {
     const res = await axios.get(
-      "http://localhost:5000/api/history/evaluations",
+      "http://https://ai-resume-analyzer-1-lu4n.onrender.com/api/history/evaluations",
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -156,7 +156,7 @@ const handleUpload = async () => {
 
     const res = await axios.post(
 
-      "http://localhost:5000/api/upload",
+      "http://https://ai-resume-analyzer-1-lu4n.onrender.com/api/upload",
 
       formData,
 
@@ -207,7 +207,7 @@ const deleteResume = async (id) => {
 
     await axios.delete(
 
-      `http://localhost:5000/api/history/${id}`,
+      `http://https://ai-resume-analyzer-1-lu4n.onrender.com/api/history/${id}`,
 
       {
 

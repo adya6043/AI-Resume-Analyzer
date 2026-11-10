@@ -13,7 +13,7 @@ function Register() {
     try {
 
       await axios.post(
-        "http://localhost:5000/api/auth/register",
+        "http://https://ai-resume-analyzer-1-lu4n.onrender.com/api/auth/register",
         {
           name,
           email,
