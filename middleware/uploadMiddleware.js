@@ -1,11 +1,20 @@
 const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
 
-// Storage configuration
-const storage = multer.diskStorage({//it decide where file will be saved 
-  destination: function (req, file, cb) { // destination:file  save in upload folder 
-    cb(null, "uploads/");
+const uploadDir = path.join(__dirname, "../uploads");
+
+// Create uploads folder if it doesn't exist
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
   },
-  filename: function (req, file, cb) {//avoid clash by unique name 
+
+  filename: function (req, file, cb) {
     cb(null, Date.now() + "-" + file.originalname);
   },
 });
@@ -13,4 +22,3 @@ const storage = multer.diskStorage({//it decide where file will be saved
 const upload = multer({ storage });
 
 module.exports = upload;
-//I used Multer as middleware to intercept multipart/form-data requests and handle file storage
