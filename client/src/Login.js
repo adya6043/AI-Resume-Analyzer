@@ -17,7 +17,7 @@ function Login() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://https://ai-resume-analyzer-1-lu4n.onrender.com/api/auth/login",
+        "https://ai-resume-analyzer-1-lu4n.onrender.com/api/auth/login",
         {
           email,
           password

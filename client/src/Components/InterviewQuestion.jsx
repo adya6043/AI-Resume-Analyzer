@@ -216,7 +216,7 @@ const [evaluating, setEvaluating] = useState(false);
       setEvaluation(null);
 
       const response = await fetch(
-        "http://https://ai-resume-analyzer-1-lu4n.onrender.com/api/answers/evaluate",
+        "https://ai-resume-analyzer-1-lu4n.onrender.com/api/answers/evaluate",
         {
           method: "POST",
           headers: {
