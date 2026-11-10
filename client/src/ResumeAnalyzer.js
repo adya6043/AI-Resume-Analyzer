@@ -1,503 +1,296 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import jsPDF from "jspdf";
-
+import Hero from "./Components/Hero";
+import UploadCard from "./Components/UploadCard";
+import LoadingCard from "./Components/LoadingCard";
+import ResumeHistory from "./Components/ResumeHistory";
+import EvaluationHistory from "./Components/EvaluationHistory";
+import ScoreCard from "./Components/ScoreCard";
+import SkillsCard from "./Components/SkillsCard";
+import MissingSkills from "./Components/MissingSkills";
+import AIAnalysis from "./Components/AIAnalysis";
+import InterviewQuestions from "./Components/InterviewQuestion";
 import {
-  CircularProgressbar,
-  buildStyles,
-} from "react-circular-progressbar";
+  ToastContainer,
+  toast,
+} from "react-toastify";
 
-import "react-circular-progressbar/dist/styles.css";
-import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
 function ResumeAnalyzer() {
-
-  const [file, setFile] = useState(null);
-  const [result, setResult] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [jobDescription, setJobDescription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
 const token = localStorage.getItem("token");
+console.log("TOKEN =", token);
 
-  // ======================
-  // Fetch History
-  // ======================
+const [file, setFile] = useState(null);
 
-  const fetchHistory = async () => {
+const [result, setResult] = useState(null);
 
-    try {
+const [history, setHistory] = useState([]);
+const [evaluations, setEvaluations] = useState([]);
 
-      const res = await axios.get(
-        "http://localhost:5000/api/history",
-        {
-          headers: {
-            Authorization: token,
-          },
-        }
-      );
+const [jobDescription, setJobDescription] = useState("");
 
-      setHistory(res.data);
+const [loading, setLoading] = useState(false);
 
-    } catch (error) {
 
-      console.log(error);
+// Fetch History
+// ======================
 
-    }
+const fetchHistory = async () => {
 
-  };
+  try {
 
-  useEffect(() => {
+    const res = await axios.get(
+      "http://localhost:5000/api/history",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-    fetchHistory();
+    setHistory(res.data);
 
-  }, []);
+  } catch (error) {
 
-  // ======================
-  // File Change
-  // ======================
+    console.log(error);
 
-  const handleFileChange = (e) => {
+    toast.error("Unable to load resume history.");
 
-    setFile(e.target.files[0]);
+  }
 
-  };
+};
+const fetchEvaluationHistory = async () => {
+  try {
+    const res = await axios.get(
+      "http://localhost:5000/api/history/evaluations",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-  // ======================
-  // Upload Resume
-  // ======================
+    setEvaluations(res.data);
 
-  const handleUpload = async () => {
+  } catch (error) {
+    console.log(error);
 
-    if (!file) {
+    toast.error("Unable to load evaluation history.");
+  }
+};
+// ======================
+// Load History
+// ======================
 
-      toast.error("Please select a PDF");
+useEffect(() => {
+  fetchHistory();
+  fetchEvaluationHistory();
+}, []);
+// ======================
+// Logout
+// ======================
 
-      return;
+const logout = () => {
 
-    }
+  localStorage.removeItem("token");
+
+  window.location.href = "/login";
+
+};
+// ======================
+// Download PDF
+// ======================
+
+const downloadPDF = () => {
+
+  if (!result) return;
+
+  const doc = new jsPDF();
+
+  doc.setFontSize(22);
+
+  doc.text("Resume Analyzer Report", 20, 20);
+
+  doc.setFontSize(14);
+
+  doc.text(`Resume Score : ${result.score}`, 20, 40);
+
+  doc.text(`ATS Score : ${result.atsScore}%`, 20, 55);
+
+  doc.save("Resume_Report.pdf");
+
+};
+// ======================
+// File Change
+// ======================
+
+const handleFileChange = (e) => {
+
+  setFile(e.target.files[0]);
+
+};
+// ======================
+// Upload Resume
+// ======================
+
+const handleUpload = async () => {
+
+  if (!file) {
+
+    toast.error("Please select a PDF");
+
+    return;
+
+  }
+
+  setLoading(true);
+
+  try {
 
     const formData = new FormData();
 
     formData.append("resume", file);
 
-    formData.append(
-      "jobDescription",
-      jobDescription
+    formData.append("jobDescription", jobDescription);
+
+    const res = await axios.post(
+
+      "http://localhost:5000/api/upload",
+
+      formData,
+
+      {
+
+        headers: {
+
+          Authorization: `Bearer ${token}`
+
+        }
+
+      }
+
     );
 
-    try {
+    setResult(res.data);
 
-      setLoading(true);
+    toast.success("Resume uploaded successfully!");
 
-      const res = await axios.post(
-        "http://localhost:5000/api/upload",
-        formData,
-        {
-          headers: {
-            Authorization: token,
-          },
-        }
-      );
+    fetchHistory();
 
-      setResult(res.data);
+  } catch (error) {
 
-      toast.success(
-        "Resume analyzed successfully!"
-      );
+    console.log(error);
 
-      fetchHistory();
+    toast.error(
 
-    } catch (error) {
+      error.response?.data?.message ||
 
-      toast.error(
-        error.response?.data?.message ||
-        "Upload Failed"
-      );
+      "Upload Failed"
 
-    }
+    );
+
+  } finally {
 
     setLoading(false);
 
-  };
-    // ======================
-  // Delete Resume
-  // ======================
+  }
 
-  const deleteResume = async (id) => {
+};
+// ======================
+// Delete Resume
+// ======================
 
-    try {
+const deleteResume = async (id) => {
 
-      await axios.delete(
-        `http://localhost:5000/api/history/${id}`,
-        {
-          headers: {
-            Authorization: token,
-          },
-        }
-      );
+  try {
 
-      toast.success("Resume Deleted");
+    await axios.delete(
 
-      fetchHistory();
+      `http://localhost:5000/api/history/${id}`,
 
-    } catch (error) {
+      {
 
-      toast.error("Delete Failed");
+        headers: {
 
-    }
-
-  };
-
-  // ======================
-  // Logout
-  // ======================
-
-  const logout = () => {
-
-    localStorage.removeItem("token");
-
-    window.location.href = "/login";
-
-  };
-
-  // ======================
-  // PDF Download
-  // ======================
-
-  const downloadPDF = () => {
-
-    if (!result) return;
-
-    const doc = new jsPDF();
-
-    doc.setFontSize(22);
-
-    doc.text("AI Resume Analyzer Report", 20, 20);
-
-    doc.setFontSize(14);
-
-    doc.text(
-      `Resume Score : ${result.score}`,
-      20,
-      40
-    );
-
-    doc.text(
-      `ATS Score : ${result.atsScore}%`,
-      20,
-      55
-    );
-
-    doc.save("Resume_Report.pdf");
-
-  };
-
-  // ======================
-  // UI
-  // ======================
-
-  return (
-
-    <div className="min-h-screen bg-gray-100 p-10">
-
-      <div className="max-w-6xl mx-auto bg-white shadow-xl rounded-xl p-8">
-
-        <div className="flex justify-between items-center mb-8">
-
-          <h1 className="text-4xl font-bold">
-
-            AI Resume Analyzer 🚀
-
-          </h1>
-
-          <button
-
-            onClick={logout}
-
-            className="bg-red-500 text-white px-5 py-2 rounded-lg"
-
-          >
-
-            Logout
-
-          </button>
-
-        </div>
-
-        <textarea
-
-          placeholder="Paste Job Description"
-
-          value={jobDescription}
-
-          onChange={(e)=>setJobDescription(e.target.value)}
-
-          className="border rounded-lg w-full h-40 p-4 mb-5"
-
-        />
-
-        <input
-
-          type="file"
-
-          accept=".pdf"
-
-          onChange={handleFileChange}
-
-          className="border rounded-lg w-full p-3 mb-5"
-
-        />
-
-        <button
-
-          onClick={handleUpload}
-
-          disabled={loading}
-
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg w-full"
-
-        >
-
-          {
-
-            loading
-
-            ?
-
-            "Analyzing Resume..."
-
-            :
-
-            "Upload Resume"
-
-          }
-
-        </button>
-
-        <ToastContainer />
-
-        {/* Resume History */}
-
-        <div className="mt-10">
-
-          <h2 className="text-2xl font-bold mb-5">
-            Resume History
-          </h2>
-
-          {
-            history.length === 0
-            ?
-            (
-              <p>No resumes uploaded yet.</p>
-            )
-            :
-            (
-              history.map((item) => (
-
-                <div
-                  key={item._id}
-                  className="bg-gray-100 p-5 rounded-lg shadow mb-4"
-                >
-
-                  <h3 className="font-bold text-lg">
-                    {item.fileName}
-                  </h3>
-
-                  <p>
-                    Resume Score :
-                    <strong> {item.score}</strong>
-                  </p>
-
-                  <p>
-                    ATS Score :
-                    <strong> {item.atsScore}%</strong>
-                  </p>
-
-                  <button
-                    onClick={() => deleteResume(item._id)}
-                    className="mt-3 bg-red-500 text-white px-4 py-2 rounded"
-                  >
-                    Delete
-                  </button>
-
-                </div>
-
-              ))
-            )
-          }
-
-        </div>
-
-        {/* Result */}
-
-        {
-
-          result && (
-
-            <>
-
-              <div className="flex justify-end mt-8">
-
-                <button
-                  onClick={downloadPDF}
-                  className="bg-green-600 text-white px-5 py-2 rounded"
-                >
-                  Download PDF
-                </button>
-
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-8 mt-8">
-
-                <div className="bg-blue-100 p-6 rounded-xl">
-
-                  <h2 className="text-2xl font-bold mb-5">
-                    Resume Score
-                  </h2>
-
-                  <div className="w-40 h-40 mx-auto">
-
-                    <CircularProgressbar
-                      value={result.score}
-                      text={`${result.score}%`}
-                      styles={buildStyles({
-                        pathColor: "#2563eb",
-                        textColor: "#111827",
-                        trailColor: "#dbeafe"
-                      })}
-                    />
-
-                  </div>
-
-                </div>
-
-                <div className="bg-indigo-100 p-6 rounded-xl">
-
-                  <h2 className="text-2xl font-bold mb-5">
-                    ATS Score
-                  </h2>
-
-                  <div className="w-40 h-40 mx-auto">
-
-                    <CircularProgressbar
-                      value={result.atsScore}
-                      text={`${result.atsScore}%`}
-                      styles={buildStyles({
-                        pathColor: "#4f46e5",
-                        textColor: "#111827",
-                        trailColor: "#d1d5db"
-                      })}
-                    />
-
-                  </div>
-
-                </div>
-
-              </div>
-``````jsx
-              {/* Skills */}
-
-              <div className="bg-white p-6 rounded-xl shadow mt-8">
-
-                <h2 className="text-2xl font-bold mb-5">
-                  Skills Detected
-                </h2>
-
-                <p>
-                  <strong>Languages:</strong>{" "}
-                  {result.extractedSkills.languages.join(", ")}
-                </p>
-
-                <p>
-                  <strong>Frameworks:</strong>{" "}
-                  {result.extractedSkills.frameworks.join(", ")}
-                </p>
-
-                <p>
-                  <strong>Databases:</strong>{" "}
-                  {result.extractedSkills.databases.join(", ")}
-                </p>
-
-                <p>
-                  <strong>Tools:</strong>{" "}
-                  {result.extractedSkills.tools.join(", ")}
-                </p>
-
-              </div>
-
-              {/* Missing Skills */}
-
-              <div className="bg-red-100 p-6 rounded-xl mt-8">
-
-                <h2 className="text-2xl font-bold mb-4">
-                  Missing Skills
-                </h2>
-
-                <ul className="list-disc pl-6">
-
-                  {result.missingSkills.map((item, index) => (
-
-                    <li key={index}>{item}</li>
-
-                  ))}
-
-                </ul>
-
-              </div>
-
-              {/* AI Feedback */}
-
-              <div className="bg-yellow-100 p-6 rounded-xl mt-8">
-
-                <h2 className="text-2xl font-bold mb-4">
-                  AI Feedback
-                </h2>
-
-                <p className="whitespace-pre-line">
-
-                  {Array.isArray(result.feedback)
-                    ? result.feedback.join("\n")
-                    : result.feedback}
-
-                </p>
-
-              </div>
-
-              {/* Interview Questions */}
-
-              <div className="bg-purple-100 p-6 rounded-xl mt-8">
-
-                <h2 className="text-2xl font-bold mb-4">
-                  Interview Questions
-                </h2>
-
-                <ul className="list-disc pl-6">
-
-                  {result.questions.map((item, index) => (
-
-                    <li key={index}>{item}</li>
-
-                  ))}
-
-                </ul>
-
-              </div>
-
-            </>
-
-          )
+          Authorization: `Bearer ${token}`
 
         }
 
-      </div>
+      }
+
+    );
+
+    toast.success("Resume Deleted");
+
+    fetchHistory();
+
+  }
+
+  catch (error) {
+
+    console.log(error);
+
+    toast.error("Delete Failed");
+
+  }
+
+};
+return (
+
+  <div className="min-h-screen bg-gray-100">
+
+    <ToastContainer />
+
+    <div className="max-w-7xl mx-auto p-8">
+
+      <Hero logout={logout} />
+
+<UploadCard
+  file={file}
+  loading={loading}
+  jobDescription={jobDescription}
+  setJobDescription={setJobDescription}
+  handleFileChange={handleFileChange}
+  handleUpload={handleUpload}
+/>
+{loading && <LoadingCard />}
+<ResumeHistory
+    history={history}
+    deleteResume={deleteResume}
+/>
+<EvaluationHistory
+  evaluations={evaluations}
+/>
+<ScoreCard result={result} />
+<SkillsCard result={result} />
+<MissingSkills result={result} />
+<AIAnalysis result={result} />
+{
+  result && (
+
+    <div className="flex justify-end mt-8">
+
+      <button
+        onClick={downloadPDF}
+        className="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-xl font-semibold"
+      >
+        📄 Download PDF
+      </button>
 
     </div>
 
-  );
-
+  )
 }
+<InterviewQuestions
+  result={result}
+  onEvaluationSaved={fetchEvaluationHistory}
+/>
 
+    </div>
+
+  </div>
+
+);
+}
 export default ResumeAnalyzer;
-

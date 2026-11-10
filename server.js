@@ -5,24 +5,28 @@ require("dotenv").config();
 const connectDB = require("./config/db");
 connectDB();
 
-const app = express(); // ✅ yeh pehle aayega
+const app = express(); //
 
 app.use(cors());
 app.use(express.json());
 
-// ✅ routes yahan use honge
+
 const uploadRoutes = require("./routes/uploadRoutes");
 app.use("/api", uploadRoutes);
 const authRoutes = require("./routes/authRoutes");
+const historyRoutes = require("./routes/historyRoutes");
+const answerRoutes = require("./routes/answerRoutes");
 
 app.use("/api/auth", authRoutes);
+app.use("/api/history", historyRoutes);
+app.use("/api/answers", answerRoutes);
 
 // test route
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

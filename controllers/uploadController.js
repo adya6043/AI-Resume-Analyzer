@@ -2,15 +2,12 @@ const fs = require("fs");
 const pdfParse = require("pdf-parse");
 const Resume = require("../models/Resume");
 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY
-);
-
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
+
 exports.uploadResume = async (req, res) => {
   try {
 
@@ -52,28 +49,28 @@ exports.uploadResume = async (req, res) => {
         "Java",
         "JavaScript",
         "Python",
-        "C++"
+        "C++",
       ],
 
       frameworks: [
         "Spring Boot",
         "React",
         "Node.js",
-        "Express"
+        "Express",
       ],
 
       databases: [
         "MySQL",
         "MongoDB",
-        "PostgreSQL"
+        "PostgreSQL",
       ],
 
       tools: [
         "Git",
         "GitHub",
         "Postman",
-        "Swagger"
-      ]
+        "Swagger",
+      ],
     };
 
     // =========================
@@ -84,7 +81,7 @@ exports.uploadResume = async (req, res) => {
       languages: [],
       frameworks: [],
       databases: [],
-      tools: []
+      tools: [],
     };
 
     for (const category in skillsDatabase) {
@@ -96,9 +93,7 @@ exports.uploadResume = async (req, res) => {
             .toLowerCase()
             .includes(skill.toLowerCase())
         ) {
-
           extractedSkills[category].push(skill);
-
         }
 
       });
@@ -126,7 +121,7 @@ exports.uploadResume = async (req, res) => {
 
     score += totalSkills * 10;
 
-    // projects
+    // Projects
 
     if (
       extractedText
@@ -142,7 +137,7 @@ exports.uploadResume = async (req, res) => {
 
     }
 
-    // github
+    // GitHub
 
     if (
       extractedText
@@ -158,7 +153,7 @@ exports.uploadResume = async (req, res) => {
 
     }
 
-    // backend bonus
+    // Backend bonus
 
     if (
       extractedSkills.frameworks.includes("Spring Boot") ||
@@ -173,13 +168,15 @@ exports.uploadResume = async (req, res) => {
 
     }
 
-    // missing skills
+    // =========================
+    // MISSING SKILLS
+    // =========================
 
     const recommendedSkills = [
       "Docker",
       "Kubernetes",
       "AWS",
-      "Redis"
+      "Redis",
     ];
 
     recommendedSkills.forEach((skill) => {
@@ -196,7 +193,7 @@ exports.uploadResume = async (req, res) => {
 
     });
 
-    // max score
+    // Max score
 
     if (score > 100) {
       score = 100;
@@ -214,12 +211,10 @@ exports.uploadResume = async (req, res) => {
     const missingATSskills = [];
 
     const allResumeSkills = [
-
       ...extractedSkills.languages,
       ...extractedSkills.frameworks,
       ...extractedSkills.databases,
-      ...extractedSkills.tools
-
+      ...extractedSkills.tools,
     ];
 
     const jdText =
@@ -246,7 +241,7 @@ exports.uploadResume = async (req, res) => {
       "Redis",
       "Kubernetes",
       "Java",
-      "Spring Boot"
+      "Spring Boot",
     ];
 
     atsSkills.forEach((skill) => {
@@ -271,10 +266,21 @@ exports.uploadResume = async (req, res) => {
 
     if (totalJDskills > 0) {
 
+      const matchedJDskills =
+        matchedSkills.filter((skill) =>
+          atsSkills.includes(skill)
+        ).length;
+
       atsScore = Math.round(
-        (matchedSkills.length / totalJDskills) * 100
+        (matchedJDskills / totalJDskills) * 100
       );
 
+    }
+
+    // Keep ATS score between 0 and 100
+
+    if (atsScore > 100) {
+      atsScore = 100;
     }
 
     console.log("===== ATS SCORE =====");
@@ -285,58 +291,90 @@ exports.uploadResume = async (req, res) => {
     // =========================
 
     const aiPrompt = `
-    Analyze this resume and provide:
+Analyze this resume and provide:
 
-    1. Resume strengths
-    2. Missing skills
-    3. ATS improvement suggestions
-    4. Career improvement advice
+1. Resume strengths
+2. Missing skills
+3. ATS improvement suggestions
+4. Career improvement advice
 
-    Resume Skills:
-    ${JSON.stringify(extractedSkills)}
+Resume Skills:
+${JSON.stringify(extractedSkills)}
 
-    Resume Score:
-    ${score}
+Resume Score:
+${score}
 
-    ATS Score:
-    ${atsScore}
+ATS Score:
+${atsScore}
 
-    Missing Skills:
-    ${missingSkills.join(", ")}
+Missing Skills:
+${missingSkills.join(", ")}
 
-    Job Description:
-    ${jobDescription}
-    `;
+Job Description:
+${jobDescription}
+
+Give the answer in a clear format using these headings:
+
+Strengths
+Weaknesses
+Suggestions
+Career Advice
+`;
 
     let aiResponse = "";
 
-try {
+    // =========================
+    // GEMINI REQUEST
+    // =========================
+
+  try {
 
   const result =
-    await model.generateContent(aiPrompt);
+    await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: aiPrompt,
+    });
 
-  aiResponse =
-    result.response.text();
+      aiResponse =
+        result.text;
+        aiResponse = aiResponse
+  .replace(/###/g, "")
+  .replace(/---/g, "")
+  .trim();
 
-} catch (error) {
+    } catch (error) {
 
-  console.log("========== GEMINI ERROR ==========");
-  console.log(error);
+      console.log(
+        "========== GEMINI ERROR =========="
+      );
 
-  if (error.response) {
-    console.log(error.response.data);
-  }
+      console.log(
+        "MESSAGE:",
+        error.message
+      );
 
-  aiResponse = `
+      console.log(
+        "NAME:",
+        error.name
+      );
+
+      console.log(
+        "STACK:",
+        error.stack
+      );
+
+      aiResponse = `
 AI service temporarily unavailable.
 
 Suggestions:
+
 - Add Docker skills
 - Learn AWS cloud deployment
 - Improve backend scalability knowledge
 - Add more real-world projects
 `;
-}
+
+    }
 
     console.log("===== AI RESPONSE =====");
     console.log(aiResponse);
@@ -432,6 +470,7 @@ Suggestions:
 
     const savedResume =
       await Resume.create({
+
         user: req.user.id,
 
         fileName: req.file.filename,
@@ -452,7 +491,7 @@ Suggestions:
 
         matchedSkills,
 
-        missingATSskills
+        missingATSskills,
 
       });
 
@@ -484,11 +523,15 @@ Suggestions:
 
       matchedSkills,
 
-      missingATSskills
+      missingATSskills,
 
     });
 
   } catch (error) {
+
+    console.log(
+      "===== UPLOAD CONTROLLER ERROR ====="
+    );
 
     console.log(error);
 
@@ -497,7 +540,9 @@ Suggestions:
     });
 
   }
+
 };
+
 // =========================
 // GET RESUME HISTORY
 // =========================
@@ -506,11 +551,12 @@ exports.getResumeHistory = async (req, res) => {
 
   try {
 
-    const resumes = await Resume.find({
-      user: req.user.id
-    }).sort({
-      createdAt: -1
-    });
+    const resumes =
+      await Resume.find({
+        user: req.user.id,
+      }).sort({
+        createdAt: -1,
+      });
 
     res.json(resumes);
 
@@ -519,7 +565,7 @@ exports.getResumeHistory = async (req, res) => {
     console.log(error);
 
     res.status(500).json({
-      message: "Error fetching history"
+      message: "Error fetching history",
     });
 
   }
